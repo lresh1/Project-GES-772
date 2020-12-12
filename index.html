@@ -39,7 +39,7 @@
   <div>
     <h2> Select Borough</h2>
     <select type="text "id='sql_input' value="" onchange="load_schooldata(document.getElementById('sql_input').value,document.getElementById('sql_input2').value)">
-        <option value="Manhattan','Bronx','Brooklyn','Queens','Staten Island" selected>All Boroughs</option>
+        <option value="" selected>---</option>
         <option value="Bronx">Bronx</option>
         <option value="Brooklyn">Brooklyn</option>
         <option value="Manhattan">Manhattan</option>
@@ -50,7 +50,8 @@
   <div>
     <h2>Select Grades</h2>
     <select type="text "id='sql_input2' value="" onchange="load_schooldata(document.getElementById('sql_input').value,document.getElementById('sql_input2').value)">
-        <option value="K-12 all grades" selected>K-12 (All Grades)</option>
+    	<option value="" selected>---</option>
+        <option value="K-12 all grades">K-12 (All Grades)</option>
         <option value="Early Childhood">Early Childhood</option>
         <option value="Elementary">Elementary</option>
         <option value="High school">High School</option>
@@ -61,9 +62,14 @@
     </select>
   </div>  
   <div>
-    <h2>Select Proficiency</h2>
-    <select type="text "id='sql_input3' value="" onchange="load_schooldata(document.getElementById('sql_input').value,document.getElementById('sql_input2').value)">
-        <option value="Manhattan','Bronx','Brooklyn','Queens','Staten Island" selected>---</option>
+    <h2>Student Achievement Rating</h2>
+    <select type="text "id='sql_input3' value="" onchange="load_schooldata(document.getElementById('sql_input').value,document.getElementById('sql_input2').value,document.getElementById('sql_input3').value)">
+        <option value="" selected>---</option>
+        <option value="Meeting Target">Meeting Target</option>
+        <option value="Approaching Target">Approaching Target</option>
+        <option value="Exceeding Target">Exceeding Target</option>
+        <option value="Not Meeting Target">Not Meeting Target</option>
+        <option value="">(No value)</option>
     </select>
   </div>
 </div>
@@ -72,7 +78,6 @@
       <div id="map"></div>
 
       <script type="text/javascript">
-
   var Jawg_Dark = L.tileLayer('https://{s}.tile.jawg.io/jawg-dark/{z}/{x}/{y}{r}.png?access-token={accessToken}', {
     attribution: '<a href="http://jawg.io" title="Tiles Courtesy of Jawg Maps" target="_blank">&copy; <b>Jawg</b>Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     minZoom: 0,
@@ -81,29 +86,75 @@
     accessToken: 'we72s9JUn6MBMOdkCWiW3hIG0X9xDLSeJe3sD67QDsCWZEdO1D1hUvmn1qG2iDhy'
 
   });
-      var map = L.map('map', {
-        center: [40.730610, -73.935242],
-        zoom: 10,
-        layers: Jawg_Dark,
-      });
 
-  var schooldata = null;
-  window.load_schooldata = function (schoollocationquery,schooltypequery) { 
-    if (schoollocationquery == ''){
-      query = '1=1';
-        }
-      if (schooldata != null) {
-      map.removeLayer(schooldata);
-        }
-    schooldata = L.tileLayer.wms('http://localhost:8080/geoserver/GES_772_Project/wms?', {
-      layers : 'GES_772_Project:Export_Output',
-      transparent : true,
-      format : 'image/png',
-      cql_filter : "BoroName IN ('" + schoollocationquery + "') AND LOCATION_1 IN ('" + schooltypequery + "')",
-      opacity : 1
-    }).addTo(map);
-};
+  	// MAP DISPLAY SETUP
+    var map = L.map('map', {
+    	maxZoom: 15,
+    	minZoom: 10,
+    	layers: Jawg_Dark,
+      	}).setView([40.730610, -73.935242], 4);
 
+ 
+	// Global variable
+	var NYCschooldata = new L.geoJson();
+	
+    //loads superfund data
+	window.load_schooldata = function (schoollocationquery,schooltypequery, schoolratingquery) { 
+    	if (NYCschooldata != null) {
+    		map.removeLayer(NYCschooldata);
+        }
+	 	if(schoollocationquery != '' && schooltypequery == ''){
+			$.ajax('http://localhost:8080/geoserver/GES_772_Project/wfs',{
+     		type: 'GET',
+     		data: {
+        		service: 'WFS',
+        		version: '1.1.0',
+        		request: 'GetFeature',
+        		typename: 'GES_772_Project:Export_Output',
+        		cql_filter: "BoroName IN ('" + schoollocationquery + "')",
+        		srsname: 'EPSG:4326',
+        		outputFormat: 'text/javascript',
+        	},
+    		dataType: 'jsonp',
+    		jsonpCallback:'callback:getJson',
+    		jsonp:'format_options'
+    	});
+		}
+		else if(schoollocationquery != '' && schooltypequery != '' && schoolratingquery == null){
+			$.ajax('http://localhost:8080/geoserver/GES_772_Project/wfs',{
+     		type: 'GET',
+     		data: {
+        		service: 'WFS',
+        		version: '1.1.0',
+        		request: 'GetFeature',
+        		typename: 'GES_772_Project:Export_Output',
+        		cql_filter: "BoroName IN ('" + schoollocationquery + "') AND LOCATION_1 IN ('" + schooltypequery + "')",
+        		srsname: 'EPSG:4326',
+        		outputFormat: 'text/javascript',
+        	},
+    		dataType: 'jsonp',
+    		jsonpCallback:'callback:getJson',
+    		jsonp:'format_options'
+    	});
+		}
+		else if(schoollocationquery != '' && schooltypequery != '' && schoolratingquery != ''){
+			$.ajax('http://localhost:8080/geoserver/GES_772_Project/wfs',{
+     		type: 'GET',
+     		data: {
+        		service: 'WFS',
+        		version: '1.1.0',
+        		request: 'GetFeature',
+        		typename: 'GES_772_Project:Export_Output',
+        		cql_filter: "BoroName IN ('" + schoollocationquery + "') AND LOCATION_1 IN ('" + schooltypequery + "') AND Student_Ac IN ('" + schoolratingquery + "')",
+        		srsname: 'EPSG:4326',
+        		outputFormat: 'text/javascript',
+        	},
+    		dataType: 'jsonp',
+    		jsonpCallback:'callback:getJson',
+    		jsonp:'format_options'
+    	});
+		};
+	};
   var afterschool = L.tileLayer.wms("http://localhost:8080/geoserver/GES_772_Project/wms?", {
       layers: 'AfterSchoolLocations_Final',
       format: 'image/png',
@@ -113,13 +164,47 @@
   });
 
   var subway = L.tileLayer.wms("http://localhost:8080/geoserver/GES_772_Project/wms?", {
-      layers: 'NYC Subways',
+      layers: 'NYC_Subways',
       format: 'image/png',
       transparent: true,
       version: '1.1.0',
       attribution: "myattribution"
   });
 
+
+var myIcon = L.icon({
+  iconUrl: 'location.png',
+  iconSize: [25, 25],
+  iconAnchor: [16, 37],
+  popupAnchor: [0, -28]
+});
+
+//creates map layer with popup
+	function getJson(data) {
+		NYCschooldata.clearLayers();	
+			NYCschooldata = L.geoJSON(data, {
+					pointToLayer: function (feature, latlng) {
+			return L.marker(latlng, {icon: myIcon});
+	},
+  				onEachFeature: function (feature, layer) {
+					popupOptions = {maxHeight: 300};
+    				layer.bindPopup(
+    					"<h><p><b>"+ feature.properties.LOCATION_N +" </b></p>" +
+						"<hr><p><b>Borough Location:</b> "+ feature.properties.BoroName +" </p>" +
+						"<p><b>Total Enrollment:</b> "+ feature.properties.Enrollment +" </p>" +
+						"<b><u>Qaulity Report Ratings</u></b>" +
+						"<p><b>Academic Rigour:</b> "+ feature.properties.Rigorous_I +" </p>" +
+						"<p><b>Collaborative Teaching:</b> "+ feature.properties.Collaborat +" </p>" +
+						"<p><b>Supportive Environment:</b> "+ feature.properties.Supportive +" </p>" +
+						"<p><b>Effective School Leadership:</b> "+ feature.properties.Effective +" </p>" +
+						"<p><b>Strong Family-Community Ties:</b> "+ feature.properties.Strong_Fam +" </p>" +
+						"<p><b>Parent Trust:</b> "+ feature.properties.Trust_Rati +" </p>",
+						popupOptions);
+  				}
+			}).addTo(map);
+			map.fitBounds(NYCschooldata.getBounds());
+    };
+  
   var baseMaps = {
       "Dark Basemap": Jawg_Dark
     };
@@ -132,40 +217,6 @@
 
       L.control.layers(baseMaps, overlayMaps).addTo(map);
 
-wfsURL = 'http://localhost:8080/geoserver/GES_772_Project/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GES_772_Project%3AExport_Output&maxFeatures=50&outputFormat=application%2Fjson'
-
-var myStyle = {
-    "color": "#ffffff",
-    "weight": 5,
-    "fillOpacity": 0,
-    "opacity": 0
-
-};
-window.load_schooldata("");	
-// Get GeoJSON data and create features.
-  $.getJSON(wfsURL, function(data) {
-  
-        schooldata = L.geoJson(data, {
-        	style: myStyle,
-			
-           
-				onEachFeature: function (feature, layer) {
-				
-						layer.on('click', function (e) {
- 
-							// get coordinates from GeoJSON
-							var coords = e.target.feature.geometry.coordinates
-							//pass coords to function to create marker.(Yellow circle)
-							onMapClick(coords);
-							
-								var field1=document.getElementById('f1');
-								field1.innerHTML=e.target.feature.properties.BoroName;
-
-						});
-
-				}
-				}).addTo(map);
-        });
 </script>
 
 
